@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Speech Recognition</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --success-color: #059669;
+            --danger-color: #dc2626;
+            --warning-color: #d97706;
+            --background-color: #f3f4f6;
+            --card-background: #ffffff;
+            --text-primary: #1f2937;
+            --text-secondary: #4b5563;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: black;
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: var(--card-background);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: var(--primary-color);
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .status-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .status-card {
+            background: var(--card-background);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+
+        .status-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .status-card h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-indicator {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .connected {
+            background-color: rgba(5, 150, 105, 0.1);
+            color: var(--success-color);
+        }
+
+        .disconnected {
+            background-color: rgba(220, 38, 38, 0.1);
+            color: var(--danger-color);
+        }
+
+        .speaking {
+            background-color: rgba(37, 99, 235, 0.1);
+            color: var(--primary-color);
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn:not(:disabled):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .transcription-container {
+            background: var(--card-background);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .transcription-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--background-color);
+        }
+
+        .transcription-content {
+            min-height: 150px;
+            padding: 1rem;
+            background-color: var(--background-color);
+            border-radius: 8px;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 1rem;
+            }
+
+            .status-container {
+                grid-template-columns: 1fr;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Real-time Speech Recognition</h1>
+            <p>Speak naturally and see the transcription in real-time</p>
+        </div>
+
+        <div class="status-container">
+            <div class="status-card">
+                <h3>
+                    <i class="fas fa-plug"></i>
+                    Connection Status
+                </h3>
+                <div id="connectionStatus" class="status-indicator disconnected">Not Connected</div>
+            </div>
+            <div class="status-card">
+                <h3>
+                    <i class="fas fa-microphone"></i>
+                    Speech Status
+                </h3>
+                <div id="speechStatus" class="status-indicator">Waiting for audio...</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="startButton" class="btn btn-primary">
+                <i class="fas fa-play"></i>
+                Start Recording
+            </button>
+            <button id="stopButton" class="btn btn-danger" disabled>
+                <i class="fas fa-stop"></i>
+                Stop Recording
+            </button>
+        </div>
+
+        <div class="transcription-container">
+            <div class="transcription-header">
+                <i class="fas fa-comment-alt"></i>
+                <h2>Transcription</h2>
+            </div>
+            <div id="transcription" class="transcription-content">
+                Your transcription will appear here...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // In your HTML file, replace the existing WebSocket setup with this improved version:
+let ws = null;
+let mediaRecorder;
+let audioContext;
+let recording = false;
+let reconnectAttempts = 0;
+let maxReconnectAttempts = 5;
+let reconnectTimeout = null;
+let isPlayingAudio = false;
+let audioQueue = [];
+
+const startButton = document.getElementById('startButton');
+const stopButton = document.getElementById('stopButton');
+const connectionStatus = document.getElementById('connectionStatus');
+const speechStatus = document.getElementById('speechStatus');
+const transcriptionDiv = document.getElementById('transcription');
+// Add this to your existing JavaScript code, before the WebSocket setup
+
+function cleanupWebSocket() {
+    if (ws) {
+        // Remove all event listeners to prevent memory leaks
+        ws.onopen = null;
+        ws.onclose = null;
+        ws.onerror = null;
+        ws.onmessage = null;
+        
+        // Close the connection if it's still open
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.close();
+        }
+        ws = null;
+    }
+    
+    // Reset recording state
+    if (recording) {
+        stopRecording();
+    }
+    
+    // Clear any pending reconnect attempts
+    if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
+    }
+}
+
+
+function setupWebSocket() {
+    cleanupWebSocket();
+    
+    try {
+        ws = new WebSocket('https://60ac-116-74-253-214.ngrok-free.app/ws/stream/');
+
+        ws.onopen = () => {
+            console.log('WebSocket connected');
+            connectionStatus.textContent = 'Connected';
+            connectionStatus.className = 'status-indicator connected';
+            startButton.disabled = false;
+            reconnectAttempts = 0;
+        };
+
+        ws.onclose = (event) => {
+            console.log('WebSocket closed:', event.code, event.reason);
+            connectionStatus.textContent = 'Disconnected';
+            connectionStatus.className = 'status-indicator disconnected';
+            startButton.disabled = true;
+            stopButton.disabled = true;
+            
+            if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
+                reconnectAttempts++;
+                connectionStatus.textContent = `Reconnecting (${reconnectAttempts}/${maxReconnectAttempts})...`;
+                reconnectTimeout = setTimeout(setupWebSocket, 3000);
+            }
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            connectionStatus.textContent = 'Connection Error';
+            connectionStatus.className = 'status-indicator disconnected';
+        };
+
+        ws.onmessage = async (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                
+                if (data.status === 'success') {
+                    // Update speech status
+                    if (data.speech_status === 'started') {
+                        speechStatus.textContent = 'Speech Detected';
+                        speechStatus.className = 'status-indicator speaking pulse';
+                    } else if (data.speech_status === 'ended') {
+                        speechStatus.textContent = 'Processing...';
+                        speechStatus.className = 'status-indicator';
+                    }
+                    
+                    // Update transcription and play audio only if we have a response
+                    if (data.llm_response) {
+                        transcriptionDiv.textContent = `You: ${data.transcription}\nAssistant: ${data.llm_response}`;
+                        
+                        if (data.tts_audio) {
+                            audioQueue.push(data.tts_audio);
+                            processAudioQueue();
+                        }
+                    }
+                } else if (data.status === 'error') {
+                    console.error('Error:', data.message);
+                    speechStatus.textContent = 'Error occurred';
+                    speechStatus.className = 'status-indicator disconnected';
+                }
+            } catch (error) {
+                console.error('Error processing message:', error);
+            }
+        };
+    } catch (error) {
+        console.error('Error setting up WebSocket:', error);
+        connectionStatus.textContent = 'Setup Error';
+        connectionStatus.className = 'status-indicator disconnected';
+    }
+}
+async function startRecording() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+        alert('WebSocket is not connected. Please wait for reconnection or refresh the page.');
+        return;
+    }
+    
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioContext = new AudioContext({ sampleRate: 16000 });
+        const source = audioContext.createMediaStreamSource(stream);
+        const processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+        source.connect(processor);
+        processor.connect(audioContext.destination);
+
+        processor.onaudioprocess = (e) => {
+            if (!recording || !ws || ws.readyState !== WebSocket.OPEN) {
+                return;
+            }
+            
+            try {
+                const inputData = e.inputBuffer.getChannelData(0);
+                const audioData = new Float32Array(inputData);
+                ws.send(audioData.buffer);
+            } catch (error) {
+                console.error('Error sending audio data:', error);
+                stopRecording();
+            }
+        };
+
+        recording = true;
+        startButton.disabled = true;
+        stopButton.disabled = false;
+        speechStatus.textContent = 'Listening...';
+        speechStatus.className = 'status-indicator speaking';
+        transcriptionDiv.textContent = 'Listening for speech...';
+
+    } catch (error) {
+        console.error('Error accessing microphone:', error);
+        alert('Error accessing microphone. Please ensure microphone permissions are granted.');
+    }
+}
+
+function stopRecording() {
+    recording = false;
+    if (audioContext) {
+        audioContext.close().catch(console.error);
+    }
+    startButton.disabled = false;
+    stopButton.disabled = true;
+    speechStatus.textContent = 'Stopped';
+    speechStatus.className = 'status-indicator';
+    
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        try {
+            ws.send(JSON.stringify({ type: 'end' }));
+        } catch (error) {
+            console.error('Error sending end message:', error);
+        }
+    }
+}
+
+// Add event listeners
+startButton.onclick = startRecording;
+stopButton.onclick = stopRecording;
+
+// Handle page unload
+window.addEventListener('beforeunload', () => {
+    cleanupWebSocket();
+});
+
+// Initial WebSocket setup
+setupWebSocket();
+
+
+
+//let audioQueue = [];
+let isPlaying = false;
+
+async function playAudioFromBase64(base64Audio) {
+    if (isPlayingAudio) return;
+    
+    try {
+        isPlayingAudio = true;
+        
+        // Convert base64 to ArrayBuffer
+        const binaryString = window.atob(base64Audio);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        // Create audio context if it doesn't exist
+        if (!window.ttsAudioContext) {
+            window.ttsAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        
+        // Decode and play audio
+        const audioBuffer = await window.ttsAudioContext.decodeAudioData(bytes.buffer);
+        const source = window.ttsAudioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(window.ttsAudioContext.destination);
+        
+        // Play and wait for completion
+        source.start(0);
+        await new Promise(resolve => {
+            source.onended = resolve;
+        });
+        
+    } catch (error) {
+        console.error('Error playing audio:', error);
+    } finally {
+        isPlayingAudio = false;
+        processAudioQueue();
+    }
+}
+async function processAudioQueue() {
+    if (isPlayingAudio || audioQueue.length === 0) return;
+    const nextAudio = audioQueue.shift();
+    await playAudioFromBase64(nextAudio);
+}
+
+// Modify the existing ws.onmessage handler
+ws.onmessage = (event) => {
+    try {
+        const data = JSON.parse(event.data);
+        
+        if (data.status === 'success') {
+            if (data.speech_status === 'started') {
+                speechStatus.textContent = 'Speech Detected';
+                speechStatus.className = 'status-indicator speaking pulse';
+            } else if (data.speech_status === 'ended') {
+                speechStatus.textContent = 'Speech Ended';
+                speechStatus.className = 'status-indicator';
+            }
+            
+            if (data.transcription) {
+                transcriptionDiv.textContent = data.llm_response;
+            }
+            
+            // Handle TTS audio if present
+            if (data.tts_audio) {
+                audioQueue.push(data.tts_audio);
+                processAudioQueue();
+            }
+        } else if (data.status === 'error') {
+            console.error('Error:', data.message);
+            speechStatus.textContent = 'Error occurred';
+            speechStatus.className = 'status-indicator disconnected';
+        }
+    } catch (error) {
+        console.error('Error processing message:', error);
+    }
+};
+
+    </script> 
+   
+   
+</body>
+</html>
