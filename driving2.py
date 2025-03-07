@@ -159,7 +159,7 @@ llm_store: Dict[tuple, ChatMessageHistory] = {}
 tts_handler: Optional[MeloTTSHandler] = None
 from pydantic import SecretStr
 
-# api_key = SecretStr(os.getenv('OPENAI_API_KEY', 'sk-rc2VRoyuUS0L4OebQ8nmlQFTkg-EE3k-sFE1foNY65T3BlbkFJKSs9zJQ2yryVddzkgjNaI_yF3IWB8FcYDTxEGC14wA'))
+# api_key = SecretStr(os.getenv('OPENAI_API_KEY', ''))
 # if not api_key.get_secret_value():
 #     logger.warning("OpenAI API key not found in environment variables. Please set OPENAI_API_KEY.")
 
